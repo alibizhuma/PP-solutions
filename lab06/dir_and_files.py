@@ -42,7 +42,7 @@ with open('ex5.txt', 'w') as f:
     
 #6
     import os
-path =r'C:\Users\user\Desktop\PP\Python\lab06'
+path =r'C:\Users\user\Desktop\PP\Python\lab06\ex6.A-Z files'
 if not os.path.exists(path):
     os.makedirs(path)
 
