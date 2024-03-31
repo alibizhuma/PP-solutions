@@ -98,7 +98,7 @@ while True:
         exit()
     elif not len([block for block, is_breakable in block_list if is_breakable]):
         print(game_score)
-        print("WIN!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print("WIN")
         exit()
         
     key = pygame.key.get_pressed()
