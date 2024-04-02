@@ -1,48 +1,80 @@
 import pygame
 import random
+import math
 
-
+# Making canvas
 screen = pygame.display.set_mode((900, 700))
-screen.fill((255, 255, 255))
 
-
+# Setting Title
 pygame.display.set_caption('GFG Paint')
 
 draw_on = False
 last_pos = (0, 0)
-
-
+eraser_width = 50
+# Radius of the Brush
 radius = 5
 
+# My code
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+RED = (255, 0, 0)
+ORANGE = (255, 128, 0)
+YELLOW = (255, 255, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
+PURPLE = (128, 0, 128)
 
-WHITE=(255,255,255)
-RED=(255,0,0)
-YELLOW=(255,255,0)
-GREEN=(102,204,0)
-BLUE=(51,51,255)
-BLACK=(0,0,0)
-PINK=(255,0,255)
+COLOR_BUTTONS = [
+    {"color": RED, "rect": pygame.Rect(10, 10, 50, 50)},
+    {"color": WHITE, "rect": pygame.Rect(70, 10, 50, 50)},
+    {"color": YELLOW, "rect": pygame.Rect(130, 10, 50, 50)},
+    {"color": GREEN, "rect": pygame.Rect(190, 10, 50, 50)},
+    {"color": BLUE, "rect": pygame.Rect(250, 10, 50, 50)},
+    {"color": PURPLE, "rect": pygame.Rect(310, 10, 50, 50)}
+]
+
+eraser = pygame.image.load('eraser.png')
+eraser_img_resize = pygame.transform.scale(eraser, (eraser_width, eraser_width))
+
+#eraser_rect = eraser_img_resize.get_rect()
+eraser_rect = pygame.Rect(360, 10, 50, 50)
+# ends here
 
 
-pygame.draw.rect(screen,RED,(0,50,20,20))
-pygame.draw.rect(screen,YELLOW,(0,70,20,20))
-pygame.draw.rect(screen,GREEN,(20,50,20,20))
-pygame.draw.rect(screen,BLUE,(20,70,20,20))
-pygame.draw.rect(screen,BLACK,(0,90,20,20))
-pygame.draw.rect(screen,PINK,(20,90,20,20))
-erasor = pygame.transform.scale(pygame.image.load("eraser.jpeg"), (40, 40))
-screen.blit(erasor, [0,110])
+draw_rect = False
 
-def roundline(canvas, color, start, end, radius=1) :
+def drawRect(canvas, color, rect_start_pos, rect_end_pos, radius = 1):
+    pygame.draw.rect(canvas, color, (rect_start_pos[0], rect_end_pos[0]))
+
+def roundline(canvas, color, start, end, radius=1):
     Xaxis = end[0] - start[0]
     Yaxis = end[1] - start[1]
     dist = max(abs(Xaxis), abs(Yaxis))
-    for i in range(dist) :
+    for i in range(dist):
         x = int(start[0] + float(i) / dist * Xaxis)
         y = int(start[1] + float(i) / dist * Yaxis)
         pygame.draw.circle(canvas, color, (x, y), radius)
+color = 'white'
 
-try:
+def eraser(canvas, color, start, end):
+    rect = pygame.Rect(start, (end[0] - start[0], end[1] - start[1]))
+    pygame.draw.rect(canvas, color, rect, 2)
+
+def draw_circle(canvas, color, center, radius):
+    pygame.draw.circle(canvas, color, center, radius)
+
+def draw_rectangle(canvas, color, start, end):
+    rect = pygame.Rect(start, (end[0] - start[0], end[1] - start[1]))
+    pygame.draw.rect(canvas, color, rect, 2)
+
+def draw_triangle(canvas, color, start, end):
+    x1, y1 = start
+    x2, y2 = end
+    x3 = x1
+    y3 = y2
+    pygame.draw.polygon(canvas, color, [(x1, y1), (x2, y2), (x3, y3)])
+
+try :
     while True :
         e = pygame.event.wait()
 
@@ -50,49 +82,62 @@ try:
             raise StopIteration
 
         if e.type == pygame.MOUSEBUTTONDOWN :
-            spot = pygame.mouse.get_pos()
-            if spot[0] < 20 and spot[1] < 70 and spot[1] > 50:
-                color= RED
-            elif spot[0] < 40 and spot[0] > 20 and spot[1] < 70 and spot[1] > 50:
-                color= GREEN
-            elif spot[0] < 20 and spot[1] < 90 and spot[1] > 70:
-                color= YELLOW
-            elif spot[0] < 40 and spot[0] > 20 and spot[1] < 90 and spot[1] > 70:
-                color= BLUE
-            elif spot[0] < 20 and spot[1] < 110 and spot[1] > 90:
-                color= BLACK
-            elif spot[0] < 40 and spot[0] > 20 and spot[1] < 110 and spot[1] > 90:
-                color= PINK
-            elif spot[0] < 40 and spot[1] < 150 and spot[1] > 110:
-                color = WHITE
-            if spot[0] > 60:
-                pygame.draw.circle(screen, color, e.pos, radius)
-            draw_on = True
-     
+            if eraser_rect.collidepoint(e.pos):
+                color = BLACK
+            for button in COLOR_BUTTONS:
+                if button["rect"].collidepoint(e.pos):
+                    color = button['color']
+
+         
+
+
+             # Start drawing shapes
+            if e.button == 1: 
+                start_pos = e.pos
+                shape_type = 'circle'
+            elif e.button == 3: # Right mouse button
+                start_pos = e.pos
+                shape_type = 'rectangle'
+            elif e.button == 2: # Middle mouse button
+                start_pos = e.pos
+                shape_type = 'triangle'
+
+            elif e.type == pygame.K_UP: # Middle mouse button
+                start_pos = e.pos
+                shape_type = 'eraser'
+
+        # When mouse button released it will stop drawing
         if e.type == pygame.MOUSEBUTTONUP :
             draw_on = False
-      
-        if e.type == pygame.MOUSEMOTION:
-            spot = pygame.mouse.get_pos()
-            if draw_on and spot[0] > 60:
+
+            # Finish drawing shapes
+            if shape_type == 'circle':
+                end_pos = e.pos
+                distance = math.hypot(end_pos[0] - start_pos[0], end_pos[1] - start_pos[1])
+                draw_circle(screen, color, start_pos, int(distance))
+            elif shape_type == 'rectangle':
+                end_pos = e.pos
+                draw_rectangle(screen, color, start_pos, end_pos)
+            elif shape_type == 'triangle':
+                end_pos = e.pos
+                draw_triangle(screen, color, start_pos, end_pos)
+            elif shape_type == 'eraser':
+                end_pos = e.pos
+                draw_rectangle(screen, (0, 0, 0), start_pos, end_pos)
+
+        # It will draw a continuous circle with the help of roundline function.
+        if e.type == pygame.MOUSEMOTION :
+            if draw_on :
                 pygame.draw.circle(screen, color, e.pos, radius)
                 roundline(screen, color, e.pos, last_pos, radius)
             last_pos = e.pos
-
-        
-        if e.type == pygame.KEYDOWN:
-            spot = pygame.mouse.get_pos()
-            if e.key == pygame.K_r: 
-                rect_size = 100  
-                pygame.draw.rect(screen, color, (spot[0], spot[1], rect_size, rect_size+100))
-            elif e.key == pygame.K_c: 
-                circle_radius = 50  
-                pygame.draw.circle(screen, color, (spot[0], spot[1]), circle_radius)
+        for button in COLOR_BUTTONS:
+            pygame.draw.rect(screen, button["color"], button["rect"])
 
         pygame.display.flip()
 
-except StopIteration:
+except StopIteration :
     pass
 
-
+# Quit
 pygame.quit()
