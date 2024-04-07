@@ -19,7 +19,7 @@ screen_height = 600
 speed = 5
 score = 0
 coin_score = 0
-coin_weight = 0  # добавлено: вес монеты
+coin_weight = 0  # weight of money
 
 #fonts and game over text
 font = pygame.font.SysFont("Verdana", 60)
