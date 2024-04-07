@@ -1,238 +1,211 @@
-import pygame 
-import random
+import pygame
+from random import randrange as rnd
+import sys
 
 pygame.init()
 
-W, H = 1200, 800
-FPS = 60
+WIDTH, HEIGHT = 1100, 700
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Menu")
+color = (255, 255, 255)
+bg_mus = pygame.image.load('flower.png').convert_alpha()
+play = pygame.image.load('play_arkanoid.png').convert_alpha()
+pause_mus = pygame.image.load('pause_arkanoid.png').convert_alpha()
+mus_exit = pygame.image.load('exit1_arkanoid.png').convert_alpha()
+play_mus = pygame.image.load('play_mus_arkanoid.png').convert_alpha()
+exitt = pygame.image.load('exit_arkanoid.png').convert_alpha()
+background_image = pygame.image.load('background.png').convert_alpha()
+pygame.mixer.music.load('sound.mp3')
+pygame.mixer.music.play(-1)
+class Button():
+    def __init__(self, x, y, image):
+        self.image = image
+        self.rect = self.image.get_rect()
+        self.rect.topleft = (x, y)
 
-screen = pygame.display.set_mode((W, H), pygame.RESIZABLE)
-clock = pygame.time.Clock()
-#vars related to change over time
-timer1 = 0
-timer2 = 0
-change_period = 3
+    def draw(self):
+        screen.blit(self.image, (self.rect.x, self.rect.y))
 
+    def is_clicked(self, pos):
+        return self.rect.collidepoint(pos)
 
-done = False
-bg = (0, 0, 0)
-
-#paddle
-paddleW = 150
-paddleH = 25
-paddleSpeed = 20
-paddle = pygame.Rect(W // 2 - paddleW // 2, H - paddleH - 30, paddleW, paddleH)
-
-
-#Ball
-ballRadius = 20
-ballSpeed = 6
-ball_rect = int(ballRadius * 2 ** 0.5)
-ball = pygame.Rect(random.randrange(ball_rect, W - ball_rect), H // 2, ball_rect, ball_rect)
-dx, dy = 1, -1
-
-#Game score
-game_score = 0
-game_score_fonts = pygame.font.SysFont('comicsansms', 40)
-game_score_text = game_score_fonts.render(f'Your game score is: {game_score}', True, (0, 0, 0))
-game_score_rect = game_score_text.get_rect()
-game_score_rect.center = (210, 20)
-
-#Catching sound
-collision_sound = pygame.mixer.Sound('catch.mp3')
-special_collision_sound = pygame.mixer.Sound('special catch.wav')
-boom_collision_sound = pygame.mixer.Sound('boom.ogg')
-
-def detect_collision(dx, dy, ball, rect):
-    if dx > 0:
-        delta_x = ball.right - rect.left
+def detect_collision(dx, dy, ball, rect, is_breakable):
+    if is_breakable:
+        pass
     else:
-        delta_x = rect.right - ball.left
-    if dy > 0:
-        delta_y = ball.bottom - rect.top
-    else:
-        delta_y = rect.bottom - ball.top
-
-    if abs(delta_x - delta_y) < 10:
-        dx, dy = -dx, -dy
-    if delta_x > delta_y:
-        dy = -dy
-    elif delta_y > delta_x:
-        dx = -dx
+        if dx > 0:
+            delta_x = ball.right - rect.left
+        else:
+            delta_x = rect.right - ball.left
+        if dy > 0:
+            delta_y = ball.bottom - rect.top
+        else:
+            delta_y = rect.bottom - ball.top
+        
+        if abs(delta_x - delta_y) < 10:
+            dx, dy = -dx, -dy
+        elif delta_x > delta_y:
+            dy = -dy
+        elif delta_y > delta_x:
+            dx = -dx
     return dx, dy
 
-#functions that change ball's speed and paddle' size over time
-def change_ball_speed(change_period):
-    global ballSpeed, timer1
-    if timer1 >= change_period:
-        timer1 = 0
-        ballSpeed += 3
 
-def change_paddle_size(change_period):
-    global paddle, timer2
-    if timer2 >= change_period:
-        timer2 = 0
-        #keeping the aspect ration of the paddle
-        aspect_ratio = paddle.width / paddle.height
-        width = paddle.width - 15
-        height = width / aspect_ratio
-        paddle = pygame.Rect(paddle.left, paddle.top, width, height)
+def pause_screen():
+    pause_font = pygame.font.SysFont("Arial", 64)
+    pause_text = pause_font.render('Music', True, (200, 200, 200))
+    pause_text_rect = pause_text.get_rect(center=(WIDTH // 2, 100))
 
+    
+    pause_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+     
+    pause_surface.fill((128, 128, 128))
 
-#block setting
-block_list = [pygame.Rect(10 + 120 * i, 50 + 70 * j,
-        100, 50) for i in range(10) for j in range (4)]
-color_list = [(random.randrange(0, 255), 
-    random.randrange(0, 255),  random.randrange(0, 255))
-              for i in range(10) for j in range(4)] 
+    screen.blit(bg_mus, (0, 0)) 
+    screen.blit(pause_text, pause_text_rect)
 
-#selecting special blocks from block_list and color_list
-num_special = num_unbreakable = random.randint(4,7)
-special_list = [(color_list[i], block_list[i]) for i in (random.randrange(0,40) for j in range(num_special))]
-special_color_list = [pair[0] for pair in special_list]
-special_block_list = [pair[1] for pair in special_list]
+    
+    play_music_button = Button(600, 250, play_mus)
+    pause_music_button = Button(400, 250, pause_mus)
+    exit_music_button = Button(500, 400, mus_exit) 
+    
+    play_music_button.draw()
+    pause_music_button.draw()
+    exit_music_button.draw()
 
-#selecting the same number of unbreakable blocks as the number of special blocks
-#not exactly the same - the number can be less if the selected rect has already been assigned to the special group)
-unbreakable_list = [(color_list[i], block_list[i]) for i in (random.randrange(0,40) for j in range(num_unbreakable)) if block_list[i] not in special_block_list]
-unbreakable_color_list = [pair[0] for pair in unbreakable_list]
-unbreakable_block_list = [pair[1] for pair in unbreakable_list]
+    
+    for event in pygame.event.get():
+        
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if play_music_button.is_clicked(pygame.mouse.get_pos()):
+                pygame.mixer.music.unpause()  
+            elif pause_music_button.is_clicked(pygame.mouse.get_pos()):
+                pygame.mixer.music.pause()
+            elif exit_music_button.is_clicked(pygame.mouse.get_pos()):  
+                pygame.quit()
+                sys.exit()
+ 
+    pygame.display.flip()
 
-#Game over Screen
-losefont = pygame.font.SysFont('comicsansms', 40)
-losetext = losefont.render('Game Over', True, (255, 255, 255))
-losetextRect = losetext.get_rect()
-losetextRect.center = (W // 2, H // 2)
+start_button = Button(450, 300, play)
+exit_button = Button(450, 400, exitt) 
+font = pygame.font.SysFont("Georgia", 64)
+paused = False
+run = True
 
-#Win Screen
-winfont = pygame.font.SysFont('comicsansms', 40)
-wintext = losefont.render('You win yay', True, (0, 0, 0))
-wintextRect = wintext.get_rect()
-wintextRect.center = (W // 2, H // 2)
+while run:
+    
+    screen.blit(background_image, (0, 0))
+    start_button.draw()
+    exit_button.draw()
 
-#ver for help. when the game enter a loop, the player can place the ball in the middle 
-#but with the price of +2 speed for the ball
-help_used = False
+    text = font.render('ARCANOID', True, (222, 184, 135))
+    text_rect = text.get_rect(center=(580, 200))
+    screen.blit(text, text_rect)
 
-
-while not done:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            done = True
+            run = False
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if start_button.is_clicked(pygame.mouse.get_pos()):
+                fps = 60
+                game_score = 0
+                paddle_w = 230
+                paddle_h = 25
+                paddle_speed = 15
+                paddle = pygame.Rect(WIDTH // 2 - paddle_w // 2, HEIGHT - paddle_h - 10, paddle_w, paddle_h)
+                ball_radius = 20
+                ball_speed = 6
+                ball_rect = int(ball_radius * 2 ** 0.5)
+                ball = pygame.Rect(rnd(ball_rect, WIDTH - ball_rect), HEIGHT // 2, ball_rect, ball_rect)
+                dx, dy = 1, -1
+                breakable_rows = [0, 1, 2]  
+                rows = 4
+                columns = 10
+                block_list = []
+                color_list = []
 
-    screen.fill(bg)
-    
-    #drawing blocks
-    [pygame.draw.rect(screen, color_list[color], block)
-     for color, block in enumerate (block_list)
-     if (color_list[color], block) not in special_list and (color_list[color], block) not in unbreakable_list]
-    
-    #drawing special blocks
-    for special_color, special_block in special_list:
-        pygame.draw.rect(screen, special_color, special_block)
-        pygame.draw.circle(screen,
-                           (255-special_color[0], 255-special_color[1], 255 - special_color[2]),
-                           special_block.center, 
-                           radius=10
-                            )
+                for j in range(rows):
+                    for i in range(columns):
+                        is_breakable = (j == rows - 1 and i == 5) or (j < rows - 1)
+                        block_rect = pygame.Rect(10 + 110 * i, 10 + 70 * j, 100, 50)
+                        block_list.append((block_rect, is_breakable))
+                        if is_breakable:
+                            color_list.append((rnd(30, 256), rnd(30, 256), rnd(30, 256)))
+                        else:
+                            color_list.append((255, 255, 255))
 
-    for unbreakable_color, unbreakable_block in unbreakable_list:
-        pygame.draw.rect(screen, unbreakable_color, unbreakable_block)
-        pygame.draw.line(screen,
-                         (255 - unbreakable_color[0], 255 - unbreakable_color[1], 255 - unbreakable_color[2]),
-                         unbreakable_block.topleft,
-                         unbreakable_block.bottomright,
-                         width=3)
-        
-    #drawing paddle and ball
-    pygame.draw.rect(screen, pygame.Color(255, 255, 255), paddle)
-    pygame.draw.circle(screen, pygame.Color(255, 0, 0), ball.center, ballRadius)
-    
+                clock = pygame.time.Clock()
+                collision_sound = pygame.mixer.Sound('catch_arkanoid.mp3')
+                bonus_sound = pygame.mixer.Sound('bonus_arkanoid.mp3')
 
-    #2 timer for the ball's speed and paddle's size
-    #ball's speed is increased over time, while the paddle's width and height is decreased
-    timer1 += clock.get_rawtime() / 1000
-    timer2 += clock.get_rawtime() / 1000
-    change_ball_speed(change_period)
-    change_paddle_size(change_period)
-    
+                while True:
+                    clock.tick(fps)
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT:
+                            pygame.quit()
+                            sys.exit()
+                        elif event.type == pygame.KEYDOWN:
+                            if event.key == pygame.K_SPACE:
+                                paused = not paused
 
-    #Ball movement
-    ball.x += ballSpeed * dx
-    ball.y += ballSpeed * dy
+                    if paused:
+                        pause_screen()
+                        continue  
 
-    
+                    screen.fill('black')
+                    for i, (block, is_breakable) in enumerate(block_list):
+                        pygame.draw.rect(screen, color_list[i], block)
+                    pygame.draw.rect(screen, pygame.Color('darkorange'), paddle)
+                    pygame.draw.circle(screen, pygame.Color('white'), ball.center, ball_radius)
+                    ball.x += ball_speed * dx
+                    ball.y += ball_speed * dy
+                    if ball.centerx < ball_radius or ball.centerx > WIDTH - ball_radius:
+                        dx = -dx
+                    if ball.centery < ball_radius:
+                        dy = -dy
 
-    #Collision left 
-    if ball.centerx < ballRadius or ball.centerx > W - ballRadius:
-        dx = -dx
-    #Collision top
-    if ball.centery < ballRadius + 50: 
-        dy = -dy
-    #Collision with paddle
-    if ball.colliderect(paddle) and dy > 0:
-        dx, dy = detect_collision(dx, dy, ball, paddle)
+                    if ball.colliderect(paddle) and dy > 0:
+                        dx, dy = detect_collision(dx, dy, ball, paddle, False)
+                    hit_index = ball.collidelist([block[0] for block in block_list])
+                    if hit_index != -1:
+                        hit_rect, is_breakable = block_list[hit_index]
+                        if is_breakable:
+                            hit_rect.inflate_ip(ball.width * 3, ball.height * 3)
+                            pygame.draw.rect(screen, pygame.Color('black'), hit_rect)
+                            collision_sound.play() 
+                            game_score += 1
+                            fps += 2
+                            block_list.pop(hit_index)
+                            color_list.pop(hit_index)
+                            if is_breakable and hit_index == 5:  
+                                paddle.width += 100
+                                bonus_sound.play()  
+                        else:
+                            dx, dy = detect_collision(dx, dy, ball, hit_rect, is_breakable)
 
-    
+                    # Win, game over
+                    if ball.bottom > HEIGHT:
+                        print(game_score)
+                        print('GAME OVER')
+                        pygame.quit()
+                        sys.exit()
+                    elif not len([block for block, is_breakable in block_list if is_breakable]):
+                        print(game_score)
+                        print("WIN!!!!!!!!!!!!!!!!!!!!!!!!!")
+                        pygame.quit()
+                        sys.exit()
+                        
+                    key = pygame.key.get_pressed()
+                    if key[pygame.K_LEFT] and paddle.left > 0:
+                        paddle.left -= paddle_speed
+                    if key[pygame.K_RIGHT] and paddle.right < WIDTH:
+                        paddle.right += paddle_speed
 
-    #Collision blocks
-    hitIndex = ball.collidelist(block_list)
+                    pygame.display.flip()
 
-
-    if hitIndex != -1:
-        if block_list[hitIndex] not in unbreakable_block_list:
-            hitRect = block_list.pop(hitIndex)
-            hitColor = color_list.pop(hitIndex)
-        else:
-            hitRect = block_list[hitIndex]
-            hitColor = color_list[hitIndex]
-        #if the rect is special, we get 2 points for it, and play a different sound
-        if hitRect in special_block_list:
-            special_block_list.remove(hitRect)
-            special_color_list.remove(hitColor)
-            special_list.remove((hitColor, hitRect))
-            game_score += 2
-            special_collision_sound.play()
-        #if the hit rect is unbreakable we do not delete it from anywhere and play another sound - vine boom
-        elif hitRect in unbreakable_block_list:
-            boom_collision_sound.play()
-        else:
-            game_score += 1
-            collision_sound.play()
-
-        dx, dy = detect_collision(dx, dy, ball, hitRect)
-      
-        
-
-
-    
-    #Game score
-    game_score_text = game_score_fonts.render(f'Your game score is: {game_score}', True, (255, 255, 255))
-    screen.blit(game_score_text, game_score_rect)
-    
-    #Win/lose screens
-    if ball.bottom > H:
-        screen.fill((0, 0, 0))
-        screen.blit(losetext, losetextRect)
-    elif all(block in unbreakable_block_list for block in block_list):
-        screen.fill((255,255, 255))
-        screen.blit(wintext, wintextRect)
-    
-
-    #Paddle Control
-    key = pygame.key.get_pressed()
-    if key[pygame.K_LEFT] and paddle.left > 0:
-        paddle.left -= paddleSpeed
-    if key[pygame.K_RIGHT] and paddle.right < W:
-        paddle.right += paddleSpeed
-
-    #this setting is my solution for the problem where the ball is stuck in some closed loop and continues to move only inside of it. Basically, by pressing CTRL-H, the user can get one time help - place the ball in the center again but with the price of +2 speed
-    if (key[pygame.K_LCTRL] or key[pygame.K_RCTRL]) and key[pygame.K_h] and not help_used:
-        ball.x = W // 2
-        ball.y = H // 2
-        ballSpeed += 2
-        help_used = True
-        
+            elif exit_button.is_clicked(pygame.mouse.get_pos()):
+                pygame.quit()
+                sys.exit()
 
     pygame.display.flip()
-    clock.tick(FPS)
